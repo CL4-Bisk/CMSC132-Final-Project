@@ -103,7 +103,31 @@ Register layout:
 21-31   Extra register storage
 ```
 
-Other Files to be implemented yet.
+### `addressing.py`
+
+This component handles operand access and addressing mode resolution aspects.
+
+Classes Implemented:
+
+- `Access` - provides helper functions for following storage access flow through `variable`, `memory`, and `register`, and also for writing to `register` or `memory` storage flows
+- `AddressingMode` - implements the Instruction Set Architecture (ISA) addressing modes
+
+Supported addressing modes:
+
+- Immediate addressing
+- Relative addressing
+- Based addressing
+- Indexed addressing
+- Register addressing
+- Register indirect addressing
+- Direct addressing
+- Indirect addressing
+- Auto-increment addressing
+- Auto-decrement addressing
+
+This file is important because the main or runner file needs it to determine the actual value, effective address, and storage location of each operand.
+
+`Other Files to be implemented yet.`
 
 ## Instruction Format
 
