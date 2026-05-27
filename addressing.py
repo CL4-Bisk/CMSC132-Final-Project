@@ -4,7 +4,20 @@ from bin_convert import HalfPrecision
 class Access:
     @staticmethod
     def data(addr, flow):
-        pass
+        current = addr
+        
+        for step in flow:
+            if step == "var":
+                current = variable.load(current)
+            elif step == "reg":
+                current = register.load(current)
+            elif step == "mem":
+                current = memory.load(current)
+            else:
+                raise ValueError(f"Invalid flow step: {step}")
+            
+        return current
+
     @staticmethod
     def store(typ, addr, value):
         pass
