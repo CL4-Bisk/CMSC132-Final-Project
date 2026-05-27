@@ -30,40 +30,80 @@ class Access:
 class AddressingMode:
     @staticmethod
     def immediate(var):
-        pass
+        var = HalfPrecision.hpbin2dec(var)
+        return var
     
     @staticmethod
     def relative(displace):
-        pass
+        pc = Access.data("PC", ["var","reg"])
+        effective_addr = pc + displace
+        return memory.load(effective_addr)
     
     @staticmethod
     def based(displace):
-        pass
-    
+        br = Access.data("BR", ["var","reg"])
+        effective_addr = br + displace
+        return memory.load(effective_addr)
+
     @staticmethod
     def indexed(displace):
-        pass
+        xr = Access.data("XR", ["var","reg"])
+        effective_addr = xr + displace
+        value = memory.load(effective_addr)
+        return effective_addr, value
     
     @staticmethod
     def register(reg_addr):
-        pass
+        reg_addr = HalfPrecision.hpbin2dec(reg_addr)
+        value = register.load(reg_addr)
+        return reg_addr, value, register
     
     @staticmethod
     def register_indirect(reg_addr):
-        pass
+        reg_addr = register.load(reg_addr)
+        effective_addr = reg_addr
+        value = memory.load(effective_addr)
+        return effective_addr, value
+        # value = register.load(reg_addr)
+        # effective_addr = value
+        # return effective_addr, memory.load(value)
     
     @staticmethod
     def direct(var_addr):
-        pass
+        effective_addr = HalfPrecision.hpbin2dec(var_addr)
+        value = memory.load(effective_addr)
+        return effective_addr, value
+        # value = HalfPrecision.hpbin2dec(var_addr)
+        # effective_addr = variable.load(var_addr)
+        # return effective_addr, memory.load(value)
     
     @staticmethod
     def indirect(var_addr):
-        pass
+        effective_addr = memory.load(var_addr)
+        value = memory.load(effective_addr)
+        return effective_addr, value
+        # value = variable.load(var_addr)
+        # effective_addr = value
+        # return effective_addr, memory.load(value)
     
     @staticmethod
     def autoinc(reg_addr):
-        pass
+        reg_addr = register.load(reg_addr)
+        effective_addr = reg_addr
+        value = memory.load(effective_addr)
+        register.store(reg_addr, effective_addr + 1)
+        return effective_addr, value
+        # value = register.load(reg_addr)
+        # effective_addr = value + 1
+        # return effective_addr, memory.load(value)
+        
     
     @staticmethod
     def autodec(reg_addr):
-        pass
+        effective_addr = register.load(reg_addr) - 1
+        register.store(reg_addr, effective_addr)
+        value = memory.load(effective_addr)
+        return effective_addr, value
+        # value = register.load(reg_addr)
+        # effective_addr = value - 1
+        # return effective_addr, memory.load(value)
