@@ -20,7 +20,12 @@ class Access:
 
     @staticmethod
     def store(typ, addr, value):
-        pass
+        if typ == "mem":
+            memory.store(addr, value)
+        elif typ == "reg":
+            register.store(addr, value)
+        else:
+            raise ValueError(f"Invalid storage type: {typ}")
 
 class AddressingMode:
     @staticmethod
