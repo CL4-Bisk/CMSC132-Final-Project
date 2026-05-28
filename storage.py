@@ -76,7 +76,7 @@ variable.data["MSG"] = {}
 variable.data["MI"] = 0;
 #variable.dispStorage()
 #register.dispStorage()
-#memory.dispStorage()
+# memory.dispStorage()
 """
 Storage:
 Variable		Storage for special values in register and memory (variables, blocks, specialialized registers,etc.)
