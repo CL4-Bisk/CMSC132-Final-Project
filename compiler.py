@@ -141,7 +141,6 @@ class Instruction:
     
     @staticmethod
     def encode(inst):
-    
         # helper to convert token string into int/float when appropriate
         def parse_token(tok):
             if isinstance(tok, (int, float)):
@@ -200,7 +199,8 @@ class Instruction:
             if len(operands) >= 1:
                 p1 = parse_token(operands[0])
                 enc1 = Instruction.encodeOp(p1)
-                
+            
+
                 if (isinstance(enc1, str) and len(enc1) == 10):
                     # check for special case for each instruction if it allows or does not allow
                     NO_RELATIVE_AND_BASED_CASE = ((operation in ["MOD", "ADD", "SUB", "MUL", "DIV", "MOV", "ADDPC"]) and
@@ -210,7 +210,7 @@ class Instruction:
                         (len(p1) == 2 and p1[0] == "B" and p1[1] in ["1", "2", "3", "4", "5", "6", "7", "8"]))     
                         
                     ONLY_F_VARS = ((operation in ["CF", "CALL"]) and not
-                        (len(p1) == 2 and p1[0] == "F" and p1[1] in ["1", "2", "3"]))    
+                        (len(p1) == 2 and p1[0] == "F" and p1[1] in ["1", "2", "3", "4"]))    
                     
                     ONLY_B_OR_F_VARS = ((operation in ["JEQ", "JNE", "JLT", "JLE", "JGT", "JGE", "JMP"]) and not (
                         (len(p1) == 2 and p1[0] == "B" and p1[1] in ["1", "2", "3", "4", "5", "6", "7", "8"]) or
@@ -257,26 +257,90 @@ class Instruction:
                         instruction["rb"] = '0'
         
             # return the instruction as a 32-bit binary string
-            inst = (instruction["opcode"] + " " +
-                        instruction["ib"] + " " +
-                        instruction["op1mode"] + " " +
-                        instruction["op1addr"] + " " +
-                        instruction["rb"] + " ")
+            inst = (instruction["opcode"] + 
+                        instruction["ib"] + 
+                        instruction["op1mode"] +
+                        instruction["op1addr"] +
+                        instruction["rb"])
 
             if instruction["ib"] == '1':
                 inst += instruction["immediate"]
             else:
-                inst += (instruction["op2mode"] + "  " +
-                        instruction["op2addr"] + "  " +
+                inst += (instruction["op2mode"] +
+                        instruction["op2addr"] +
                         "00000")        
             return inst  
                     
         except (ValueError, KeyError) as e:
             print(f"Error: {str(e)}")
 
-if __name__ == "__main__":
-    pass
+    @staticmethod
+    def encodeProgram(program):
+        try: 
+            br_address = variable.load("BR")
+            instructions = []
+            block_counter = 0 
+            multiline_comment = False
+            block_register_operand = None
+            program_address = br_address
 
+            if not program: 
+                raise ValueError("Empty program")
+            
+            for line in program:
+                # dealing with whitespaces and blank lines
+                line_stripped = line.strip()
+                if not line_stripped or all(c in ' \t' for c in line_stripped):
+                    continue
+
+                # working with comments
+                if line_stripped[0] == 'z':
+                    multiline_comment = not multiline_comment
+                    continue            
+
+                if multiline_comment: 
+                    continue
+
+                if line_stripped[0] == 'x':
+                    continue
+            
+                # working with instructions
+                parts = line_stripped.split()
+                if not parts: 
+                    continue
+                operation = parts[0].upper()
+                
+                #checks if operation creates a block variable
+                if (operation in ["CB", "CF"]):
+                    block_operand = parts[1]
+                    variable.store(block_operand, HalfPrecision.hpdec2bin(program_address)) 
+                    encoded_inst = Instruction.encode(line_stripped)
+                    if encoded_inst:
+                        instructions.insert(block_counter, encoded_inst)
+                        block_counter += 1
+                else:
+                    encoded_inst = Instruction.encode(line_stripped)
+                    instructions.append(encoded_inst) 
+                
+                program_address += 1
+
+
+            register.store("BR", block_counter)
+            current_address = br_address
+            print(instructions)
+            for inst in instructions:
+                memory.store(current_address, inst)
+                current_address += 1
+        
+        except (ValueError, KeyError) as e: 
+            print(f"Error: {str(e)}")
+
+        
+        
+
+if __name__ == "__main__":
+
+    
 
     
 
