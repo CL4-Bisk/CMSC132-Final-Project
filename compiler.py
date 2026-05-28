@@ -53,7 +53,7 @@ class Instruction:
     @staticmethod
     def decodeMSG(msg):
         """Converts each dash to space, underscore to tab, dash+underscore to newline. Also converts the
-        word minus to dash, and the word under to underscore."""
+        word minus to dash, and the word under to underscore. Only for MSG which we DID NOT PUT since complexity"""
         msg = msg.replace('-_', '\n')
         msg = msg.replace('-', ' ')
         msg = msg.replace('_', '\t')
@@ -63,13 +63,23 @@ class Instruction:
 
     @staticmethod
     def encodeOp(operand):
+        """Converts operand (Immediate, Register, or Memory) to the following, depending on the type:
+            IF IMMEDIATE, returns a HalfPrecision Binary (16-BIT binary) of that operand.
+            IF REGISTER OR MEMORY, returns a 10-BIT binary which encodes 
+                the ADDRESSING MODE (First three bits) and the BINARY ADDRESS 
+                for accessing (The remaining seven bits)  
+        """
+        
+        # for immediates 
         if isinstance(operand, (int, float)):
             return HalfPrecision.hpdec2bin(operand)
-
+            
+        # for indirect addressing and other addressing modes that are not DIRECT or REGISTER_DIRECT
         if isinstance(operand, str) and (operand.startswith("(") and operand.endswith(")")):
             operand = operand.replace("(", "").replace(")", "")
             addressOperand = None
             
+            # relative addressing
             if (operand.endswith("Z")):
                 operand = operand[:-1]
                 negative = operand.startswith("-")
@@ -82,7 +92,7 @@ class Instruction:
                     addressOperand = HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)
                     return f"{RELATIVE_REG}{addressOperand}" if (operand in REGISTER_NAME) else f"{RELATIVE_MEM}{addressOperand}"
 
-
+            # base addressing
             if (operand.endswith("Y")):
                 operand = operand[:-1]
                 negative = operand.startswith("-")
@@ -95,7 +105,7 @@ class Instruction:
                     addressOperand = HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)
                     return f"{BASED_REG}{addressOperand}" if (operand in REGISTER_NAME) else f"{BASED_MEM}{addressOperand}"
 
-
+            # indexing
             if (operand.endswith("X")):
                 operand = operand[:-1]
                 negative = operand.startswith("-")
@@ -108,6 +118,7 @@ class Instruction:
                     addressOperand = f"{'0' if operand in REGISTER_NAME else '1'}{HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 6)}"
                     return f"{INDEXED_MEMREG_DISP}{addressOperand}"
 
+            # auto-increment
             if (operand.endswith("+")):
                 operand = operand[:-1]
                 if (operand.isdigit()):
@@ -116,6 +127,7 @@ class Instruction:
                     addressOperand = HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)               
                 return f"{AUTO_INCREMENT}{addressOperand}"
             
+            # auto-decrement
             if (operand.endswith("-")):
                 operand = operand[:-1]
                 if (operand.isdigit()):
@@ -124,6 +136,7 @@ class Instruction:
                     addressOperand = HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)              
                 return f"{AUTO_DECREMENT}{addressOperand}"
 
+            # register or memory indirect 
             else:
                 addressOperand = HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)
                 if (operand in REGISTER_NAME):
@@ -131,16 +144,26 @@ class Instruction:
                 else:
                     return f"{INDIRECT}{addressOperand}"
 
+        # register and memory direct 
         elif isinstance(operand, str):
             if (operand in REGISTER_NAME):
                 return f"{REGISTER_DIRECT}{HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)}"
             else:
                 return f"{DIRECT}{HalfPrecision.hpbin2bin(HalfPrecision.hpdec2bin(variable.load(operand)), 7)}"
+        
+        # you suck, probably! - Jave
         else:
             raise ValueError("Invalid operand type")
     
     @staticmethod
     def encode(inst):
+        """Encodes a line of instruction from a program to a 32-BIT instruction format. 
+            Refer to "IV. Instruction Code" for more info
+        
+            This function has already worked with parsing already on different operations as 
+            operations have their operand count, types, and allowed addressing modes.
+        """
+
         # helper to convert token string into int/float when appropriate
         def parse_token(tok):
             if isinstance(tok, (int, float)):
@@ -172,7 +195,6 @@ class Instruction:
             }
 
             #instruction parsing
-            decodeMSG = Instruction.decodeMSG(inst)
             parts = inst.strip().replace(',', ' ').split()
             if len(parts) == 0:
                 raise ValueError("Empty instruction")
@@ -196,11 +218,13 @@ class Instruction:
 
             # operand parsing
             operands = parts[1:]
+
+            # first operation
             if len(operands) >= 1:
                 p1 = parse_token(operands[0])
                 enc1 = Instruction.encodeOp(p1)
             
-
+                # Check for special cases for first operand if it allows or does not allow
                 if (isinstance(enc1, str) and len(enc1) == 10):
                     # check for special case for each instruction if it allows or does not allow
                     NO_RELATIVE_AND_BASED_CASE = ((operation in ["MOD", "ADD", "SUB", "MUL", "DIV", "MOV", "ADDPC"]) and
@@ -228,7 +252,7 @@ class Instruction:
                 else:
                     raise ValueError(f"Invalid encoding for first operand {p1}")
 
-
+            # second operation
             if len(operands) >= 2:
                 p2 = parse_token(operands[1])
                 enc2 = Instruction.encodeOp(p2)
@@ -276,6 +300,29 @@ class Instruction:
 
     @staticmethod
     def encodeProgram(program):
+        """
+        So, this is where program gets converted to a list of instructions which are encoded to the memory.
+        You may refer to      storage.py      for info about memory, registers, and variables used (uwu) 
+    
+        Interestingly, specs go as follows:
+            Normal instruction is encoded sequentially.
+            
+            Special naming instructions like CB and CF are put at the top, before all the other normal instructions.
+            Basically, CB and CF are like the labels in NASM and used to refer to sections in code. They have the
+            Block Variables (B1-B8) and Function Variables (F1-F4) with Parameter Variables (P vars), resp.
+        
+            So,
+            CB B1
+            MOV B, 1
+            ADD A, B
+
+            is kinda equivalent to,
+            block_name: 
+                MOV B, 1
+                ADD A, B
+
+            Same with CF, but has params :0
+        """
         try: 
             br_address = variable.load("BR")
             instructions = []
@@ -336,9 +383,6 @@ class Instruction:
             print(f"Error: {str(e)}")
 
         
-        
-
-if __name__ == "__main__":
 
     
 
