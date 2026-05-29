@@ -1,0 +1,7 @@
+MOV R1 (1Y)
+MOV R2 (-2Y)
+MOV R3 (R1Y)
+MOV R4 (AZ)
+MOV R5 (3Z)
+MOV R6 (-1Z)
+EOP

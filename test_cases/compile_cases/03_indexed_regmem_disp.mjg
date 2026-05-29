@@ -1,0 +1,5 @@
+MOV R1 (R2X)
+MOV R2 (AX)
+MOV R3 (5X)
+MOV R4 (-7X)
+EOP

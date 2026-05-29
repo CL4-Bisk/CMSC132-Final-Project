@@ -1,0 +1,12 @@
+x single-line comment
+MOV R1 3
+
+z
+MOV R1 999
+ADD R1 1
+z
+
+MOV R2 4
+ADD R1 R2
+PRNT R1 R1
+EOP

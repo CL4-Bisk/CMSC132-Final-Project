@@ -1,0 +1,5 @@
+MOV A 2
+MOV B 99
+MOV R1 (A)
+PRNT R1 R1
+EOP
