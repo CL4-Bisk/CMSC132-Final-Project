@@ -45,36 +45,32 @@ Executed Results
 
 ### `bin_convert.py`
 
-This file contains the binary conversion utilities used throughout the simulator.
+Binary and numeric conversion utilities for the simulator.
 
 Main classes:
 
-- `Length` - stores fixed bit lengths and helper methods for padding and rounding values
-- `BinaryFraction` - converts decimal fractions to binary fractions and binary fractions back to decimal
-- `HalfPrecision` - converts decimal numbers to the project's custom half-precision binary format and back
+- `Length` - centralizes bit-length constants and helper formatting functions
+- `BinaryFraction` - handles fractional binary conversion helpers
+- `HalfPrecision` - converts between decimal values and the simulator's custom 16-bit half-precision format
 
-Important functionality:
+Key behavior:
 
-- Converts decimal values into 16-bit half-precision binary strings
-- Converts half-precision binary strings back into decimal values
-- Pads binary strings with leading or trailing zeroes
-- Rounds decimal results to the configured number of decimal places
+- Encodes numeric register/memory values into half-precision binary
+- Decodes stored half-precision binary back to decimal values
+- Provides zero-padding and rounding helpers used by compiler/storage logic
 
 ### `storage.py`
 
-This file defines the simulated storage system of the ISA.
+Defines and initializes simulator storage.
 
-Main class:
+Main implementation:
 
-- `Storage` - manages address-value pairs using a dictionary-based storage structure
+- `Storage` - dictionary-backed load/store abstraction with automatic half-precision conversion for numeric values
+- `memory` - initialized to 128 addressable slots
+- `register` - initialized to 32 addressable slots
+- `variable` - symbol table mapping names (`R1`, `PC`, `BR`, `A`, `B1`, `F1`, `P1`, etc.) to addresses
 
-Created storage objects:
-
-- `memory` - simulates main memory with 128 slots
-- `register` - simulates register storage with 32 slots
-- `variable` - maps readable names such as `PC`, `IR`, `BR`, `R1`, `A`, and `B1` to their corresponding storage addresses
-
-Memory layout:
+Initialized memory layout:
 
 ```text
 0       Special storage
@@ -88,7 +84,7 @@ Memory layout:
 117-127 Extra memory storage
 ```
 
-Register layout:
+Initialized register layout:
 
 ```text
 0       Special register
@@ -105,29 +101,46 @@ Register layout:
 
 ### `addressing.py`
 
-This component handles operand access and addressing mode resolution aspects.
+Addressing helpers used by execution logic.
 
-Classes Implemented:
+Main classes:
 
-- `Access` - provides helper functions for following storage access flow through `variable`, `memory`, and `register`, and also for writing to `register` or `memory` storage flows
-- `AddressingMode` - implements the Instruction Set Architecture (ISA) addressing modes
+- `Access` - unified read/write helpers for chained flows like `variable -> register` and direct writes to `memory`/`register`
+- `AddressingMode` - explicit helper methods for immediate, relative, based, indexed, direct/indirect, register indirect, auto-increment, and auto-decrement behavior
 
-Supported addressing modes:
+### `compiler.py`
 
-- Immediate addressing
-- Relative addressing
-- Based addressing
-- Indexed addressing
-- Register addressing
-- Register indirect addressing
-- Direct addressing
-- Indirect addressing
-- Auto-increment addressing
-- Auto-decrement addressing
+Instruction encoder and source-to-memory compiler.
 
-This file is important because the main or runner file needs it to determine the actual value, effective address, and storage location of each operand.
+Main implementation:
 
-`Other Files to be implemented yet.`
+- `operations`/`operationCodes` tables define opcode mapping
+- `Instruction.encodeOp()` parses operands and encodes addressing mode + address/immediate
+- `Instruction.encode()` builds a 32-bit instruction string from one source line, including operand validation rules
+- `Instruction.encodeProgram()` processes a full source program, skips comments/blank lines, handles `CB`/`CF` label-like declarations, and stores encoded instructions in memory
+
+### `run.py`
+
+Runtime executor and CLI entry point for programs.
+
+Main implementation:
+
+- `Program.run()` performs fetch-decode-execute-writeback over compiled 32-bit instructions
+- Resolves operands for regular and relative/based modes
+- Executes arithmetic, movement, comparison/jump, call/return, scan/print, and stop behavior
+- Exposes command-line execution:
+  - `python run.py <program_file>`
+
+### `test_cases/`
+
+Regression and behavior validation suite.
+
+Main files:
+
+- `test_cases/run_cases/*.mjg` - end-to-end runnable program samples
+- `test_cases/compile_cases/*.mjg` - compile-focused cases (includes invalid/edge cases)
+- `test_cases/run_all_run_cases.py` - executes non-interactive runtime cases
+- `test_cases/check_compile_cases.py` - checks compile behavior across compile cases
 
 ## Instruction Format
 
