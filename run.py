@@ -5,7 +5,7 @@ from pathlib import Path
 
 from compiler import Instruction
 from storage import memory, register, variable
-from addressing import Access
+from addressing import Access, AddressingMode
 
 
 class Except:
@@ -109,107 +109,13 @@ class Program:
         return int(float(value))
 
     @classmethod
-    def _decode_immediate(cls, bits):
-        return int(bits, 2)
-
-    @classmethod
-    def _resolve_regular_mode(cls, mode, addr_bits):
-        addr = int(addr_bits, 2)
-
-        if mode == "000":  # register direct
-            value = register.load(addr)
-            return {"addr": addr, "value": value, "typ": "reg"}
-        if mode == "001":  # register indirect
-            effective_addr = cls._to_int(register.load(addr))
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "010":  # direct
-            value = memory.load(addr)
-            return {"addr": addr, "value": value, "typ": "mem"}
-        if mode == "011":  # indirect
-            effective_addr = cls._to_int(memory.load(addr))
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "100":  # indexed (reg/mem displacement)
-            disp_type = int(addr_bits[0], 2)
-            disp_addr = int(addr_bits[1:], 2)
-            displacement = register.load(disp_addr) if disp_type == 0 else memory.load(disp_addr)
-            effective_addr = cls._to_int(Access.data("XR", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "101":  # indexed (integer displacement)
-            sign_bit = int(addr_bits[0], 2)
-            displacement = int(addr_bits[1:], 2)
-            displacement = -displacement if sign_bit else displacement
-            effective_addr = cls._to_int(Access.data("XR", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "110":  # auto-increment
-            effective_addr = cls._to_int(register.load(addr))
-            value = memory.load(effective_addr)
-            register.store(addr, effective_addr + 1)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "111":  # auto-decrement
-            new_addr = cls._to_int(register.load(addr)) - 1
-            register.store(addr, new_addr)
-            value = memory.load(new_addr)
-            return {"addr": new_addr, "value": value, "typ": "mem"}
-
-        raise ValueError(f"Unknown addressing mode: {mode}")
-
-    @classmethod
-    def _resolve_relative_based_mode(cls, mode, addr_bits):
-        addr = int(addr_bits, 2)
-
-        if mode == "000":  # based register
-            displacement = register.load(addr)
-            effective_addr = cls._to_int(Access.data("BR", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "001":  # based memory
-            displacement = memory.load(addr)
-            effective_addr = cls._to_int(Access.data("BR", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "010":  # based positive
-            effective_addr = cls._to_int(Access.data("BR", ["var", "reg"]) + addr)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "011":  # based negative
-            effective_addr = cls._to_int(Access.data("BR", ["var", "reg"]) - addr)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "100":  # relative register
-            displacement = register.load(addr)
-            effective_addr = cls._to_int(Access.data("PC", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "101":  # relative memory
-            displacement = memory.load(addr)
-            effective_addr = cls._to_int(Access.data("PC", ["var", "reg"]) + displacement)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "110":  # relative positive
-            effective_addr = cls._to_int(Access.data("PC", ["var", "reg"]) + addr)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-        if mode == "111":  # relative negative
-            effective_addr = cls._to_int(Access.data("PC", ["var", "reg"]) - addr)
-            value = memory.load(effective_addr)
-            return {"addr": effective_addr, "value": value, "typ": "mem"}
-
-        raise ValueError(f"Unknown relative/based mode: {mode}")
-
-    @classmethod
     def getOp(cls, inscode, immediate=False, relative_based=False):
         if immediate:
-            return {"addr": None, "value": cls._decode_immediate(inscode), "typ": None}
+            return AddressingMode.operand(None, AddressingMode.immediate(inscode), None)
 
         mode = inscode[:3]
         addr_bits = inscode[3:]
-        if relative_based:
-            return cls._resolve_relative_based_mode(mode, addr_bits)
-        return cls._resolve_regular_mode(mode, addr_bits)
+        return AddressingMode.resolve(mode, addr_bits, relative_based=relative_based)
 
     @classmethod
     def run(cls):
